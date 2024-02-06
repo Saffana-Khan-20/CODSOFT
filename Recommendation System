@@ -1,1 +1,62 @@
+#task3
+#recommendation system
+
+import numpy as np
+
+movie_titles = ["Inception", "The Shawshank Redemption", "The Godfather", "Pulp Fiction", "The Dark Knight"]
+
+movie_descriptions = [
+    "A mind-bending thriller about dreams within dreams.",
+    "A tale of hope and friendship in a prison.",
+    "An epic crime drama about the Corleone family.",
+    "A nonlinear narrative exploring the criminal underworld.",
+    "A superhero film featuring the iconic character Batman."
+]
+
+def tfidf_vectorizer(movie_descriptions):
+    unique_words = set(word for description in movie_descriptions for word in description.lower().split())
+    word_to_index = {word: i for i, word in enumerate(unique_words)}
+
+    tf_matrix = np.zeros((len(movie_descriptions), len(unique_words)))
+    for i, description in enumerate(movie_descriptions):
+        for word in description.lower().split():
+            tf_matrix[i, word_to_index[word]] += 1
+
+    idf_vector = np.log(len(movie_descriptions) / (1 + np.sum(tf_matrix > 0, axis=0)))
+
+    tfidf_matrix = tf_matrix * idf_vector
+
+    return tfidf_matrix, word_to_index
+
+def cosine_similarity(user_preferences_text, tfidf_matrix, word_to_index):
+    user_vector = np.zeros(len(tfidf_matrix[0]))
+    for preference in user_preferences_text:
+        if preference and preference.lower() in word_to_index:
+            user_vector += tfidf_matrix[:, word_to_index[preference.lower()]]
+
+    user_vector = user_vector / (np.linalg.norm(user_vector) + 1e-10)  # Add a small value to avoid division by zero
+
+    cosine_similarities = np.dot(user_vector, tfidf_matrix.T) / (np.linalg.norm(user_vector) * np.linalg.norm(tfidf_matrix, axis=1))
+    return cosine_similarities.flatten()
+
+def content_based_filtering(user_preferences_text, tfidf_matrix, word_to_index, movie_titles):
+    cosine_similarities = cosine_similarity(user_preferences_text, tfidf_matrix, word_to_index)
+    recommended_movies_indices = np.argsort(cosine_similarities)[-2:][::-1]
+    recommended_movies = [movie_titles[i] for i in recommended_movies_indices]
+    return recommended_movies
+
+# Take user input for preferences
+user_preferences_text = input("Enter your movie preferences (separated by spaces): ").split()
+
+# Process user input and make recommendations
+tfidf_matrix, word_to_index = tfidf_vectorizer(movie_descriptions)
+recommended_movies = content_based_filtering(user_preferences_text, tfidf_matrix, word_to_index, movie_titles)
+
+# Display recommended movies
+if recommended_movies:
+    print("Recommended movies for you:")
+    for i, movie in enumerate(recommended_movies, start=1):
+        print(f"{i}. {movie}")
+else:
+    print("Sorry, no recommendations based on your preferences.")
 
